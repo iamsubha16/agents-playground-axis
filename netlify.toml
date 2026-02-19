@@ -2,5 +2,9 @@
   command = "npm run build"
   publish = ".next"
 
+  # NEXT_PUBLIC_* vars are intentionally exposed to the client by Next.js - omit from secrets scan
+  [build.environment]
+    SECRETS_SCAN_OMIT_KEYS = "NEXT_PUBLIC_AGENT_NAME,NEXT_PUBLIC_LIVEKIT_URL"
+
 [[plugins]]
   package = "@netlify/plugin-nextjs"
