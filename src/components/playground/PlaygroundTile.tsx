@@ -9,6 +9,7 @@ type PlaygroundTileProps = {
   childrenClassName?: string;
   padding?: boolean;
   backgroundColor?: string;
+  hideBorder?: boolean;
 };
 
 export type PlaygroundTab = {
@@ -28,11 +29,12 @@ export const PlaygroundTile: React.FC<PlaygroundTileProps> = ({
   childrenClassName,
   padding = true,
   backgroundColor = "transparent",
+  hideBorder = false,
 }) => {
   const contentPadding = padding ? 4 : 0;
   return (
     <div
-      className={`flex flex-col border border-gray-800/80 rounded-xl text-gray-500 bg-${backgroundColor} shadow-lg shadow-black/10 transition-all duration-200 hover:border-gray-700/60 hover:shadow-xl hover:shadow-black/15 ${className}`}
+      className={`flex flex-col rounded-xl text-gray-500 bg-${backgroundColor} ${hideBorder ? "" : "border border-gray-800/80 shadow-lg shadow-black/10 transition-all duration-200 hover:border-gray-700/60 hover:shadow-xl hover:shadow-black/15"} ${className}`}
     >
       {title && (
         <div

@@ -1,14 +1,14 @@
 import { AnimatePresence, motion } from "framer-motion";
-import { Inter } from "next/font/google";
 import Head from "next/head";
 import { useState } from "react";
 
 import { PlaygroundConnect } from "@/components/PlaygroundConnect";
 import Playground from "@/components/playground/Playground";
-import { PlaygroundToast, ToastType } from "@/components/toast/PlaygroundToast";
+import { PlaygroundToast } from "@/components/toast/PlaygroundToast";
 import { ConfigProvider, useConfig } from "@/hooks/useConfig";
 import { ToastProvider, useToast } from "@/components/toast/ToasterProvider";
 import { TokenSourceConfigurable, TokenSource } from "livekit-client";
+import { Agent } from "@/lib/types";
 
 const themeColors = [
   "amber",
@@ -21,7 +21,14 @@ const themeColors = [
   // "teal",
 ];
 
-const inter = Inter({ subsets: ["latin"] });
+const availableAgents: Agent[] = [
+  { name: "axis-bank-rpc-agent", label: "Axis Bank Agent" },
+  { name: "vijay-doctor-loan-sales-agent", label: "Doctor Loan Sales Agent" },
+  { name: "bajaj-finance-exclusive-waiver-outbound-agent-modular-code", label: "Bajaj Finance Exclusive Waiver Agent" },
+  { name: "bajaj-finance-bounce-reminder-outbound-agent", label: "Bajaj Finance Bounce Reminder Agent" },
+  // Add more agents here as needed:
+  // { name: "my-other-agent", label: "My Other Agent" },
+];
 
 export default function Home() {
   return (
@@ -83,9 +90,7 @@ export function HomeInner() {
             themeColors={themeColors}
             tokenSource={tokenSource}
             autoConnect={autoConnect}
-            agentOptions={{
-              agentName: process.env.NEXT_PUBLIC_AGENT_NAME || "",
-            }}
+            availableAgents={availableAgents}
           />
         ) : (
           <PlaygroundConnect

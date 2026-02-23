@@ -4,6 +4,11 @@ import {
   TokenSourceConfigurable,
 } from "livekit-client";
 
+export interface Agent {
+  name: string;
+  label: string;
+}
+
 export type PlaygroundConnectProps = {
   accentColor: string;
   onConnectClicked: (
