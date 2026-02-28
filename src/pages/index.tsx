@@ -24,8 +24,8 @@ const themeColors = [
 const availableAgents: Agent[] = [
   { name: "axis-bank-rpc-agent", label: "Axis Bank Agent" },
   { name: "vijay-doctor-loan-sales-agent", label: "Doctor Loan Sales Agent" },
-  { name: "bajaj-finance-exclusive-waiver-outbound-agent-modular-code", label: "Bajaj Finance Exclusive Waiver Agent" },
-  { name: "bajaj-finance-bounce-reminder-outbound-agent-1", label: "Bajaj Finance Bounce Reminder Agent" },
+  { name: "bajaj-finance-exclusive-waiver-agent-1", label: "Bajaj Finance Exclusive Waiver Agent" },
+  // { name: "bajaj-finance-bounce-reminder-outbound-agent-1", label: "HDFC Bounce Demo Agent" },
   // Add more agents here as needed:
   // { name: "my-other-agent", label: "My Other Agent" },
 ];
