@@ -5,6 +5,8 @@
   # NEXT_PUBLIC_* vars are intentionally exposed to the client by Next.js - omit from secrets scan
   [build.environment]
     SECRETS_SCAN_OMIT_KEYS = "NEXT_PUBLIC_AGENT_NAME,NEXT_PUBLIC_LIVEKIT_URL"
+    # Allow pnpm install when lockfile is out of sync with package.json
+    PNPM_FLAGS = "--no-frozen-lockfile"
 
 [[plugins]]
   package = "@netlify/plugin-nextjs"
