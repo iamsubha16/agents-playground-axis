@@ -85,28 +85,30 @@ export function HomeInner() {
         </AnimatePresence>
 
         {/* Tab Navigation Bar */}
-        <div className="flex items-center w-full max-w-6xl pt-4 pb-2">
-          {/* Logo */}
-          <a
-            href="https://auflo.in"
-            className="inline-flex transition-all duration-200 hover:opacity-90 hover:scale-105 active:scale-95 mr-4"
-          >
-            <img
-              src="/favicon.ico"
-              alt="Auflo"
-              width={28}
-              height={28}
-              className="object-contain"
-            />
-          </a>
-
-          {/* Title */}
-          <span className="text-sm font-semibold text-gray-100 tracking-tight mr-8">
-            {config.title}
-          </span>
+        <div className="flex flex-wrap items-center justify-between gap-y-3 gap-x-4 w-full max-w-6xl pt-4 pb-2">
+          <div className="flex items-center gap-3 min-w-0">
+            <a
+              href="https://audatec.in"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex shrink-0 transition-all duration-200 hover:opacity-90 hover:scale-105 active:scale-95"
+              aria-label="Audatec"
+            >
+              <img
+                src="/favicon.ico"
+                alt=""
+                width={28}
+                height={28}
+                className="object-contain"
+              />
+            </a>
+            <span className="text-sm font-semibold text-gray-100 tracking-tight truncate">
+              {config.title}
+            </span>
+          </div>
 
           {/* Tabs */}
-          <div className="flex gap-1 bg-gray-900/60 rounded-xl p-1 border border-gray-800/60">
+          <div className="flex gap-1 bg-gray-900/60 rounded-xl p-1 border border-gray-800/60 shrink-0">
             <TabButton
               active={activeTab === "playground"}
               onClick={() => setActiveTab("playground")}
@@ -139,8 +141,9 @@ export function HomeInner() {
                 <Playground
                   themeColors={themeColors}
                   tokenSource={tokenSource}
-                  autoConnect={true}
+                  autoConnect={false}
                   availableAgents={availableAgents}
+                  logo={false}
                 />
               </motion.div>
             ) : (

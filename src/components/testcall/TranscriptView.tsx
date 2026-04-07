@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   parseConversationTranscript,
   type ConversationTurn,
@@ -31,6 +31,52 @@ export const TranscriptView = ({
     "idle" | "loading" | "error" | "empty"
   >("idle");
   const [fetchError, setFetchError] = useState<string | null>(null);
+  const [downloadBusy, setDownloadBusy] = useState(false);
+  const downloadLockRef = useRef(false);
+
+  const transcriptFilename = useMemo(() => {
+    if (!transcriptUrl) return "transcript.json";
+    try {
+      const path = new URL(transcriptUrl).pathname;
+      const seg = path.split("/").filter(Boolean).pop();
+      if (seg && /\.json$/i.test(seg)) return seg;
+    } catch {
+      /* ignore */
+    }
+    return "transcript.json";
+  }, [transcriptUrl]);
+
+  const downloadTranscriptJson = useCallback(async () => {
+    if (!transcriptUrl || downloadLockRef.current) return;
+    downloadLockRef.current = true;
+    setDownloadBusy(true);
+    try {
+      const res = await fetch(
+        `/api/fetch-transcript?url=${encodeURIComponent(transcriptUrl)}`,
+      );
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(
+          typeof err.error === "string" ? err.error : "Download failed",
+        );
+      }
+      const blob = await res.blob();
+      const objectUrl = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = objectUrl;
+      a.download = transcriptFilename;
+      a.rel = "noopener";
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(objectUrl);
+    } catch (e) {
+      console.error("Transcript download:", e);
+    } finally {
+      downloadLockRef.current = false;
+      setDownloadBusy(false);
+    }
+  }, [transcriptUrl, transcriptFilename]);
 
   const userBubbleLabel =
     customerDisplayName.trim() || "Customer";
@@ -196,14 +242,20 @@ export const TranscriptView = ({
         <p className="text-gray-500 text-sm">
           No user or agent messages found in this transcript file.
         </p>
-        <a
-          href={transcriptUrl}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="text-amber-400 text-sm hover:text-amber-300 underline underline-offset-2 transition-colors"
-        >
-          Open raw JSON ↗
-        </a>
+        <div className="flex flex-wrap items-center justify-center gap-3">
+          <a
+            href={transcriptUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-amber-400 text-sm hover:text-amber-300 underline underline-offset-2 transition-colors"
+          >
+            Open raw JSON ↗
+          </a>
+          <TranscriptDownloadButton
+            onClick={downloadTranscriptJson}
+            disabled={downloadBusy}
+          />
+        </div>
       </div>
     );
   }
@@ -235,14 +287,20 @@ export const TranscriptView = ({
           Conversation
         </span>
         {transcriptUrl && (
-          <a
-            href={transcriptUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-[10px] uppercase tracking-wider text-amber-500/80 hover:text-amber-400 transition-colors"
-          >
-            Raw JSON ↗
-          </a>
+          <div className="flex items-center gap-3 shrink-0">
+            <a
+              href={transcriptUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-[10px] uppercase tracking-wider text-amber-500/80 hover:text-amber-400 transition-colors"
+            >
+              Raw JSON ↗
+            </a>
+            <TranscriptDownloadButton
+              onClick={downloadTranscriptJson}
+              disabled={downloadBusy}
+            />
+          </div>
         )}
       </div>
       <div className="flex-1 min-h-0 overflow-y-auto pt-4 pr-1 custom-scrollbar flex flex-col gap-3">
@@ -275,3 +333,42 @@ export const TranscriptView = ({
     </div>
   );
 };
+
+function TranscriptDownloadButton({
+  onClick,
+  disabled,
+}: {
+  onClick: () => void;
+  disabled: boolean;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled}
+      className="inline-flex items-center gap-1.5 text-[10px] uppercase tracking-wider font-medium text-amber-500/90 hover:text-amber-400 transition-colors disabled:opacity-40 disabled:cursor-not-allowed focus:outline-none focus-visible:ring-1 focus-visible:ring-amber-500/50 rounded"
+    >
+      <DownloadIcon className="w-3 h-3 opacity-90" />
+      {disabled ? "Downloading…" : "Download"}
+    </button>
+  );
+}
+
+function DownloadIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      className={className}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden
+    >
+      <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+      <polyline points="7 10 12 15 17 10" />
+      <line x1="12" y1="15" x2="12" y2="3" />
+    </svg>
+  );
+}

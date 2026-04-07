@@ -3,12 +3,15 @@ import { motion, AnimatePresence } from "framer-motion";
 import { LoadingSVG } from "@/components/button/LoadingSVG";
 
 const DEFAULT_TRUNKS = [
-  { id: "ST_iXFxRcZBhfCL", label: "DS Test Server" }
+  { id: "ST_iXFxRcZBhfCL", label: "DS Test Server" },
 ];
 
-const DEFAULT_AGENT = "audatec-rpc-agent-v1";
+const DEFAULT_AGENTS = [
+  { id: "audatec-rpc-agent-v1", label: "DS RPC Agent" },
+];
 
 type Trunk = { id: string; label: string };
+type AgentOption = { id: string; label: string };
 
 type TestCallFormProps = {
   onCallTriggered: (
@@ -24,6 +27,8 @@ export const TestCallForm = ({ onCallTriggered, isCallActive }: TestCallFormProp
   const [customerName, setCustomerName] = useState("");
   const [trunks, setTrunks] = useState<Trunk[]>(DEFAULT_TRUNKS);
   const [selectedTrunk, setSelectedTrunk] = useState(DEFAULT_TRUNKS[0].id);
+  const [agents, setAgents] = useState<AgentOption[]>(DEFAULT_AGENTS);
+  const [selectedAgent, setSelectedAgent] = useState(DEFAULT_AGENTS[0].id);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -31,6 +36,11 @@ export const TestCallForm = ({ onCallTriggered, isCallActive }: TestCallFormProp
   const [showAddTrunk, setShowAddTrunk] = useState(false);
   const [customTrunkId, setCustomTrunkId] = useState("");
   const [customTrunkLabel, setCustomTrunkLabel] = useState("");
+
+  // Custom agent add state
+  const [showAddAgent, setShowAddAgent] = useState(false);
+  const [customAgentId, setCustomAgentId] = useState("");
+  const [customAgentLabel, setCustomAgentLabel] = useState("");
 
   const handleAddTrunk = useCallback(() => {
     const id = customTrunkId.trim();
@@ -43,6 +53,18 @@ export const TestCallForm = ({ onCallTriggered, isCallActive }: TestCallFormProp
     setCustomTrunkLabel("");
     setShowAddTrunk(false);
   }, [customTrunkId, customTrunkLabel]);
+
+  const handleAddAgent = useCallback(() => {
+    const id = customAgentId.trim();
+    if (!id) return;
+    const label = customAgentLabel.trim() || id;
+    const newAgent = { id, label };
+    setAgents((prev) => [...prev, newAgent]);
+    setSelectedAgent(id);
+    setCustomAgentId("");
+    setCustomAgentLabel("");
+    setShowAddAgent(false);
+  }, [customAgentId, customAgentLabel]);
 
   const handleSubmit = useCallback(async () => {
     setError(null);
@@ -60,7 +82,7 @@ export const TestCallForm = ({ onCallTriggered, isCallActive }: TestCallFormProp
         body: JSON.stringify({
           phone_number: cleaned,
           customer_name: customerName.trim() || undefined,
-          agent_name: DEFAULT_AGENT,
+          agent_name: selectedAgent,
           sip_trunk_id: selectedTrunk,
         }),
       });
@@ -73,7 +95,7 @@ export const TestCallForm = ({ onCallTriggered, isCallActive }: TestCallFormProp
     } finally {
       setIsLoading(false);
     }
-  }, [phoneNumber, customerName, selectedTrunk, onCallTriggered]);
+  }, [phoneNumber, customerName, selectedAgent, selectedTrunk, onCallTriggered]);
 
   return (
     <div className="flex flex-col gap-4">
@@ -116,22 +138,85 @@ export const TestCallForm = ({ onCallTriggered, isCallActive }: TestCallFormProp
         </div>
       </div>
 
-      {/* Agent (read-only) */}
+      {/* Agent */}
       <div className="flex flex-col gap-1.5">
-        <label className="text-[10px] uppercase tracking-widest text-gray-500 font-medium">
-          Agent
-        </label>
-        <div className="w-full text-gray-400 text-sm bg-gray-900/30 border border-gray-800/50 rounded-lg px-3 py-2.5 flex items-center gap-2">
-          <span className="w-1.5 h-1.5 rounded-full bg-green-500 shrink-0" />
-          {DEFAULT_AGENT}
+        <div className="flex items-center justify-between">
+          <label className="text-[10px] uppercase tracking-widest text-gray-500 font-medium">
+            Agent
+          </label>
+          <button
+            type="button"
+            onClick={() => setShowAddAgent((v) => !v)}
+            className="flex items-center gap-1 text-[10px] text-amber-400 hover:text-amber-300 transition-colors font-medium"
+          >
+            {showAddAgent ? (
+              <><XIcon /> Cancel</>
+            ) : (
+              <><PlusIcon /> Add Custom</>
+            )}
+          </button>
         </div>
+
+        <select
+          id="test-call-agent"
+          value={selectedAgent}
+          onChange={(e) => setSelectedAgent(e.target.value)}
+          disabled={isCallActive || isLoading}
+          className="w-full text-white text-sm bg-gray-900/50 border border-gray-800 rounded-lg px-3 py-2.5 transition-all focus:border-amber-500/50 focus:ring-1 focus:ring-amber-500/30 focus:outline-none appearance-none cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+        >
+          {agents.map((agent) => (
+            <option key={agent.id} value={agent.id} className="bg-gray-900">
+              {agent.label}
+            </option>
+          ))}
+        </select>
+
+        <AnimatePresence>
+          {showAddAgent && (
+            <motion.div
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: "auto" }}
+              exit={{ opacity: 0, height: 0 }}
+              transition={{ duration: 0.2 }}
+              className="overflow-hidden"
+            >
+              <div className="flex flex-col gap-2 p-3 bg-gray-900/60 border border-amber-500/20 rounded-xl mt-1">
+                <p className="text-[10px] text-gray-500 uppercase tracking-widest font-medium">
+                  Add Custom Agent
+                </p>
+                <input
+                  type="text"
+                  value={customAgentId}
+                  onChange={(e) => setCustomAgentId(e.target.value)}
+                  placeholder="Agent code (e.g. audatec-rpc-agent-v1)"
+                  className="w-full text-white text-xs bg-gray-900/80 border border-gray-700 rounded-lg px-3 py-2 placeholder:text-gray-600 focus:border-amber-500/50 focus:ring-1 focus:ring-amber-500/30 focus:outline-none font-mono"
+                />
+                <input
+                  type="text"
+                  value={customAgentLabel}
+                  onChange={(e) => setCustomAgentLabel(e.target.value)}
+                  placeholder="Label (optional)"
+                  className="w-full text-white text-xs bg-gray-900/80 border border-gray-700 rounded-lg px-3 py-2 placeholder:text-gray-600 focus:border-amber-500/50 focus:ring-1 focus:ring-amber-500/30 focus:outline-none"
+                />
+                <button
+                  type="button"
+                  onClick={handleAddAgent}
+                  disabled={!customAgentId.trim()}
+                  className="flex items-center justify-center gap-1.5 w-full py-2 rounded-lg text-xs font-semibold transition-all bg-amber-500/15 text-amber-400 border border-amber-500/30 hover:bg-amber-500/25 disabled:opacity-40 disabled:cursor-not-allowed"
+                >
+                  <PlusIcon /> Add & Select Agent
+                </button>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
 
       {/* SIP Trunk */}
       <div className="flex flex-col gap-1.5">
         <div className="flex items-center justify-between">
           <label className="text-[10px] uppercase tracking-widest text-gray-500 font-medium">
-            SIP Trunk
+            Trunk
           </label>
           <button
             type="button"
@@ -155,7 +240,8 @@ export const TestCallForm = ({ onCallTriggered, isCallActive }: TestCallFormProp
         >
           {trunks.map((trunk) => (
             <option key={trunk.id} value={trunk.id} className="bg-gray-900">
-              {trunk.label} ({trunk.id})
+              {/* {trunk.label} ({trunk.id}) */}
+              {trunk.label}
             </option>
           ))}
         </select>

@@ -1,19 +1,43 @@
-import { Button } from "@/components/button/Button";
-import { LoadingSVG } from "@/components/button/LoadingSVG";
-import { SettingsDropdown } from "@/components/playground/SettingsDropdown";
-import { useConfig } from "@/hooks/useConfig";
 import { ConnectionState } from "livekit-client";
 import { ReactNode } from "react";
 
 type PlaygroundHeader = {
-  logo?: ReactNode;
+  logo?: ReactNode | false;
   title?: ReactNode;
   githubLink?: string;
   height: number;
   accentColor: string;
   connectionState: ConnectionState;
-  onConnectClicked: () => void;
 };
+
+function sessionStatusMeta(state: ConnectionState): {
+  label: string;
+  dotClass: string;
+  animate: boolean;
+} {
+  switch (state) {
+    case ConnectionState.Connected:
+      return {
+        label: "Live",
+        dotClass: "bg-green-500",
+        animate: true,
+      };
+    case ConnectionState.Connecting:
+    case ConnectionState.Reconnecting:
+    case ConnectionState.SignalReconnecting:
+      return {
+        label: "Connecting…",
+        dotClass: "bg-amber-400",
+        animate: true,
+      };
+    default:
+      return {
+        label: "Not connected",
+        dotClass: "bg-gray-500",
+        animate: false,
+      };
+  }
+}
 
 export const PlaygroundHeader = ({
   logo,
@@ -21,93 +45,74 @@ export const PlaygroundHeader = ({
   githubLink,
   accentColor,
   height,
-  onConnectClicked,
   connectionState,
 }: PlaygroundHeader) => {
-  const { config } = useConfig();
+  const embedded = logo === false;
+  const status = sessionStatusMeta(connectionState);
+
   return (
     <div
-      className={`flex gap-4 pt-4 text-${accentColor}-500 justify-between items-center shrink-0`}
+      className={`flex gap-4 items-center shrink-0 w-full max-w-6xl mx-auto ${
+        embedded
+          ? "border-b border-gray-800/70 pb-3 mb-1 justify-start"
+          : `pt-4 justify-between text-${accentColor}-500`
+      }`}
       style={{
-        height: height + "px",
+        minHeight: height + "px",
       }}
     >
-      <div className="flex items-center gap-4 basis-2/3">
-        <div className="flex lg:basis-1/2">
-          <a href="https://auflo.in" className="inline-flex transition-all duration-200 hover:opacity-90 hover:scale-105 active:scale-95">{logo ?? <LKLogo />}</a>
-        </div>
-        <div className="lg:basis-1/2 lg:text-center text-sm lg:text-base font-semibold text-gray-100 tracking-tight">
-          {title}
-        </div>
-      </div>
-      <div className="flex basis-1/3 justify-end items-center gap-3">
-        {githubLink && (
-          <a
-            href={githubLink}
-            target="_blank"
-            className="text-gray-400 hover:text-amber-400 transition-all duration-200 hover:scale-110"
+      {embedded ? (
+        <div className="flex flex-col gap-1 min-w-0 sm:flex-row sm:items-center sm:gap-3">
+          <span className="text-[10px] uppercase tracking-widest text-gray-500 font-semibold shrink-0">
+            Voice session
+          </span>
+          <div
+            className="inline-flex items-center gap-2 rounded-full border border-gray-800/90 bg-gray-950/50 px-3 py-1.5 w-fit"
+            role="status"
+            aria-live="polite"
           >
-            <GithubSVG />
-          </a>
-        )}
-        {/* {config.settings.editable && <SettingsDropdown />} */}
-        <Button
-          accentColor={
-            connectionState === ConnectionState.Connected ? "red" : accentColor
-          }
-          disabled={connectionState === ConnectionState.Connecting}
-          onClick={() => {
-            onConnectClicked();
-          }}
-        >
-          {connectionState === ConnectionState.Connecting ? (
-            <LoadingSVG />
-          ) : connectionState === ConnectionState.Connected ? (
-            "Disconnect"
-          ) : (
-            "Connect"
+            <span
+              className={`relative flex h-2 w-2 shrink-0 rounded-full ${status.dotClass} ${
+                status.animate ? "animate-pulse" : ""
+              }`}
+            />
+            <span className="text-xs font-medium text-gray-200 tabular-nums">
+              {status.label}
+            </span>
+          </div>
+        </div>
+      ) : (
+        <>
+          <div className="flex items-center gap-4 basis-2/3 min-w-0 flex-1">
+            <div className="flex lg:basis-1/2 shrink-0">
+              <a
+                href="https://audatec.in"
+                className="inline-flex transition-all duration-200 hover:opacity-90 hover:scale-105 active:scale-95"
+              >
+                {logo ?? <LKLogo />}
+              </a>
+            </div>
+            <div className="min-w-0 text-sm lg:text-base font-semibold text-gray-100 tracking-tight lg:basis-1/2 lg:text-center">
+              {title}
+            </div>
+          </div>
+          {githubLink && (
+            <div className="flex shrink-0 justify-end items-center">
+              <a
+                href={githubLink}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-gray-400 hover:text-amber-400 transition-all duration-200 hover:scale-110"
+              >
+                <GithubSVG />
+              </a>
+            </div>
           )}
-        </Button>
-      </div>
+        </>
+      )}
     </div>
   );
 };
-
-// const LKLogo = () => (
-//   <svg
-//     width="28"
-//     height="28"
-//     viewBox="0 0 32 32"
-//     fill="none"
-//     xmlns="http://www.w3.org/2000/svg"
-//   >
-//     <g clipPath="url(#clip0_101_119699)">
-//       <path
-//         d="M19.2006 12.7998H12.7996V19.2008H19.2006V12.7998Z"
-//         fill="currentColor"
-//       />
-//       <path
-//         d="M25.6014 6.40137H19.2004V12.8024H25.6014V6.40137Z"
-//         fill="currentColor"
-//       />
-//       <path
-//         d="M25.6014 19.2002H19.2004V25.6012H25.6014V19.2002Z"
-//         fill="currentColor"
-//       />
-//       <path d="M32 0H25.599V6.401H32V0Z" fill="currentColor" />
-//       <path d="M32 25.5986H25.599V31.9996H32V25.5986Z" fill="currentColor" />
-//       <path
-//         d="M6.401 25.599V19.2005V12.7995V6.401V0H0V6.401V12.7995V19.2005V25.599V32H6.401H12.7995H19.2005V25.599H12.7995H6.401Z"
-//         fill="white"
-//       />
-//     </g>
-//     <defs>
-//       <clipPath id="clip0_101_119699">
-//         <rect width="32" height="32" fill="white" />
-//       </clipPath>
-//     </defs>
-//   </svg>
-// );
 
 const LKLogo = () => (
   <img

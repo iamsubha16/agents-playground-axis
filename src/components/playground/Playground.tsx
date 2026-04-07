@@ -1,5 +1,6 @@
 "use client";
 
+import { Button } from "@/components/button/Button";
 import { LoadingSVG } from "@/components/button/LoadingSVG";
 // import { ChatTile } from "@/components/chat/ChatTile";
 // import { ColorPicker } from "@/components/colorPicker/ColorPicker";
@@ -47,7 +48,7 @@ export interface PlaygroundMeta {
 }
 
 export interface PlaygroundProps {
-  logo?: ReactNode;
+  logo?: ReactNode | false;
   themeColors: string[];
   tokenSource: TokenSourceConfigurable;
   agentOptions?: PartialMessage<RoomAgentDispatch>;
@@ -242,65 +243,84 @@ export default function Playground({
 
   return (
     <SessionProvider session={session}>
-      <div className="flex flex-col h-full w-full">
+      <div className="flex flex-col h-full w-full max-w-6xl mx-auto">
         <PlaygroundHeader
           title={config.title}
           logo={logo}
           height={headerHeight}
           accentColor={config.settings.theme_color}
           connectionState={connectionState}
-          onConnectClicked={() => {
-            if (connectionState === ConnectionState.Disconnected) {
-              startSession();
-            } else if (connectionState === ConnectionState.Connected) {
-              session.end();
-            }
-          }}
         />
         <div
           className="flex gap-4 py-4 grow w-full items-center justify-center"
           style={{ height: `calc(100% - ${headerHeight}px)` }}
         >
           <div className="flex flex-col items-center gap-5 w-full max-w-2xl h-full">
-            {availableAgents.length > 0 && (
-              <div className="flex flex-col items-center gap-1.5 w-full">
-                <span className="text-xs uppercase tracking-widest text-gray-500 font-medium">
-                  Select Agent
-                </span>
-                <DropdownMenu.Root>
-                  <DropdownMenu.Trigger
-                    disabled={connectionState !== ConnectionState.Disconnected}
-                    className="group inline-flex items-center justify-between gap-2 px-4 py-2.5 rounded-lg bg-gray-900/80 border border-gray-800/80 text-gray-100 text-sm hover:bg-gray-800/80 hover:border-gray-700/60 transition-all duration-200 disabled:opacity-40 disabled:cursor-not-allowed min-w-52 focus:outline-none focus:ring-1 focus:ring-amber-500/50"
-                  >
-                    <span>
-                      {availableAgents.find((a) => a.name === selectedAgentName)
-                        ?.label ?? selectedAgentName}
-                    </span>
-                    <ChevronIcon />
-                  </DropdownMenu.Trigger>
-                  <DropdownMenu.Portal>
-                    <DropdownMenu.Content
-                      className="z-50 min-w-52 rounded-xl border border-gray-800/80 bg-gray-900/95 backdrop-blur-sm py-1.5 text-sm shadow-2xl shadow-black/40"
-                      sideOffset={6}
-                      collisionPadding={16}
+            <div className="flex flex-col items-center gap-4">
+              {availableAgents.length > 0 && (
+                <div className="flex flex-col items-center gap-1.5">
+                  <span className="text-xs uppercase tracking-widest text-gray-500 font-medium">
+                    Select Agent
+                  </span>
+                  <DropdownMenu.Root>
+                    <DropdownMenu.Trigger
+                      disabled={connectionState !== ConnectionState.Disconnected}
+                      className="group inline-flex min-w-52 items-center justify-between gap-2 px-4 py-2.5 rounded-lg bg-gray-900/80 border border-gray-800/80 text-gray-100 text-sm hover:bg-gray-800/80 hover:border-gray-700/60 transition-all duration-200 disabled:opacity-40 disabled:cursor-not-allowed focus:outline-none focus:ring-1 focus:ring-amber-500/50"
                     >
-                      {availableAgents.map((agentOption) => (
-                        <DropdownMenu.Item
-                          key={agentOption.name}
-                          onSelect={() => setSelectedAgentName(agentOption.name)}
-                          className="flex items-center gap-2.5 px-3 py-2.5 mx-1 rounded-lg text-gray-100 hover:bg-gray-800/80 cursor-pointer transition-colors duration-150 focus:outline-none focus:bg-gray-800/80"
-                        >
-                          <span className="w-4 h-4 flex items-center justify-center shrink-0">
-                            {agentOption.name === selectedAgentName && <CheckIcon />}
-                          </span>
-                          {agentOption.label}
-                        </DropdownMenu.Item>
-                      ))}
-                    </DropdownMenu.Content>
-                  </DropdownMenu.Portal>
-                </DropdownMenu.Root>
-              </div>
-            )}
+                      <span>
+                        {availableAgents.find((a) => a.name === selectedAgentName)
+                          ?.label ?? selectedAgentName}
+                      </span>
+                      <ChevronIcon />
+                    </DropdownMenu.Trigger>
+                    <DropdownMenu.Portal>
+                      <DropdownMenu.Content
+                        className="z-50 min-w-52 rounded-xl border border-gray-800/80 bg-gray-900/95 backdrop-blur-sm py-1.5 text-sm shadow-2xl shadow-black/40"
+                        sideOffset={6}
+                        collisionPadding={16}
+                      >
+                        {availableAgents.map((agentOption) => (
+                          <DropdownMenu.Item
+                            key={agentOption.name}
+                            onSelect={() => setSelectedAgentName(agentOption.name)}
+                            className="flex items-center gap-2.5 px-3 py-2.5 mx-1 rounded-lg text-gray-100 hover:bg-gray-800/80 cursor-pointer transition-colors duration-150 focus:outline-none focus:bg-gray-800/80"
+                          >
+                            <span className="w-4 h-4 flex items-center justify-center shrink-0">
+                              {agentOption.name === selectedAgentName && <CheckIcon />}
+                            </span>
+                            {agentOption.label}
+                          </DropdownMenu.Item>
+                        ))}
+                      </DropdownMenu.Content>
+                    </DropdownMenu.Portal>
+                  </DropdownMenu.Root>
+                </div>
+              )}
+              <Button
+                accentColor={
+                  connectionState === ConnectionState.Connected
+                    ? "red"
+                    : config.settings.theme_color
+                }
+                disabled={connectionState === ConnectionState.Connecting}
+                className="min-w-52 px-6 py-2.5"
+                onClick={() => {
+                  if (connectionState === ConnectionState.Disconnected) {
+                    startSession();
+                  } else if (connectionState === ConnectionState.Connected) {
+                    session.end();
+                  }
+                }}
+              >
+                {connectionState === ConnectionState.Connecting ? (
+                  <LoadingSVG />
+                ) : connectionState === ConnectionState.Connected ? (
+                  "Disconnect"
+                ) : (
+                  "Connect"
+                )}
+              </Button>
+            </div>
             <PlaygroundTile
               title="Agent Audio"
               className="w-full grow"

@@ -117,7 +117,7 @@ export const CallDetails = ({
           </div>
         )}
         {activeTab === "details" && (
-          <div className="flex flex-col gap-4 overflow-y-auto flex-1 min-h-0">
+          <div className="flex flex-col gap-4 overflow-y-auto flex-1 min-h-0 pr-5 [scrollbar-gutter:stable]">
             {sipResult ? <SipResultPanel result={sipResult} /> : (
               <div className="flex items-center justify-center h-24 text-gray-600 text-sm">
                 Trigger a test call to see details here
@@ -137,13 +137,6 @@ const SipResultPanel = ({ result }: { result: any }) => {
   const raw = result.raw_api_response || {};
   const isFailed = result.status === "failed";
 
-  const callDuration = (() => {
-    if (!result.sip_request_sent_at || !result.sip_response_received_at) return null;
-    const ms = new Date(result.sip_response_received_at).getTime() -
-      new Date(result.sip_request_sent_at).getTime();
-    return (ms / 1000).toFixed(1) + "s";
-  })();
-
   return (
     <div className="flex flex-col gap-3">
       {/* Status row */}
@@ -161,13 +154,11 @@ const SipResultPanel = ({ result }: { result: any }) => {
         )}
       </div>
 
-      {/* Core fields */}
-      <div className="grid grid-cols-2 gap-2">
-        <Field label="Phone Number" value={result.phone_number} />
-        <Field label="Caller ID" value={result.caller_id} />
-        <Field label="SIP Trunk" value={raw.sip_trunk_id || "—"} mono />
-        <Field label="Call Duration" value={callDuration || "—"} />
-
+      {/* Core fields (detailed job result) */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+        <Field label="Customer Number" value={result.phone_number} />
+        <Field label="Telephony Number" value={result.caller_id} />
+        {/* <Field label="Room" value={result.room_name} mono small /> */}
       </div>
 
       {/* Error block */}
@@ -181,9 +172,37 @@ const SipResultPanel = ({ result }: { result: any }) => {
         </div>
       )}
 
-      {/* Timestamps */}
+      {/* Timestamps — always Asia/Kolkata (IST) */}
       <div className="border-t border-gray-800/60 pt-3 grid grid-cols-1 gap-1.5">
-        <div className="text-[10px] uppercase tracking-widest text-gray-600 font-medium mb-1">Timestamps</div>
+        {(() => {
+          // Pick the *earliest* of all timestamps that exist, fallback to now.
+          const times = [
+            result.data_assigned_at,
+            result.sip_request_sent_at,
+            result.sip_response_received_at,
+            result.processed_at,
+          ].filter(Boolean)
+            .map(v => {
+              try {
+                // parseAssumeUtcIso is imported above
+                return parseAssumeUtcIso(String(v));
+              } catch {
+                return null;
+              }
+            }).filter(Boolean);
+          let dateString = "";
+          if (times.length > 0) {
+            // Find the minimum date
+            const minDate = new Date(Math.min(...times.map(d => d!.getTime())));
+            // Format: 7 April, 2026 (IST)
+            dateString = `${minDate.getDate()} ${minDate.toLocaleString("en-US", { month: "long" })}, ${minDate.getFullYear()}`;
+          }
+          return (
+            <div className="text-[10px] uppercase tracking-widest text-gray-600 font-medium mb-1">
+              Timestamps (IST){dateString ? ` — ${dateString}` : ""}
+            </div>
+          );
+        })()}
         <TimestampRow label="Assigned" value={result.data_assigned_at} />
         <TimestampRow label="SIP Request" value={result.sip_request_sent_at} />
         <TimestampRow label="SIP Response" value={result.sip_response_received_at} />
@@ -196,10 +215,9 @@ const SipResultPanel = ({ result }: { result: any }) => {
 const CallInfoPanel = ({ call }: { call: any }) => (
   <div className="flex flex-col gap-3 border-t border-gray-800/60 pt-4">
     <div className="text-[10px] uppercase tracking-widest text-gray-600 font-medium">Studio Call Record</div>
-    <div className="grid grid-cols-2 gap-2">
+    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
       <Field label="Status" value={call.call_status} />
       <Field label="Duration" value={call.duration ? `${Math.floor(call.duration / 60)}m ${call.duration % 60}s` : "—"} />
-      <Field label="Cost" value={call.cost != null ? `₹${Number(call.cost).toFixed(2)}` : "—"} />
       <Field label="Call Type" value={call.call_type} />
     </div>
     {call.call_outcome && (
@@ -278,14 +296,36 @@ const Field = ({
   </div>
 );
 
+const IST_TIMEZONE = "Asia/Kolkata";
+
+function parseAssumeUtcIso(value: string): Date {
+  const s = value.trim();
+  if (!s) return new Date(NaN);
+  if (/[zZ]$/.test(s)) return new Date(s);
+  if (/[+-]\d{2}:\d{2}$/.test(s) || /[+-]\d{4}$/.test(s)) return new Date(s);
+  const normalized = s.includes("T") ? s : s.replace(/^(\d{4}-\d{2}-\d{2})\s+/, "$1T");
+  if (/^\d{4}-\d{2}-\d{2}T\d{1,2}:\d{2}/.test(normalized)) {
+    const base = normalized.replace(/[zZ]$/, "");
+    return new Date(`${base}Z`);
+  }
+  return new Date(s);
+}
+
 const TimestampRow = ({ label, value }: { label: string; value?: string | null }) => {
   if (!value) return null;
-  const d = new Date(value);
-  const time = d.toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+  const d = parseAssumeUtcIso(String(value));
+  if (Number.isNaN(d.getTime())) return null;
+  const formatted = d.toLocaleTimeString("en-IN", {
+    timeZone: IST_TIMEZONE,
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    hour12: false,
+  });
   return (
-    <div className="flex justify-between items-center text-xs">
-      <span className="text-gray-600">{label}</span>
-      <span className="text-gray-400 font-mono tabular-nums">{time}</span>
+    <div className="flex justify-between items-center gap-3 text-xs">
+      <span className="text-gray-600 shrink-0">{label}</span>
+      <span className="text-gray-400 font-mono tabular-nums text-right">{formatted}</span>
     </div>
   );
 };

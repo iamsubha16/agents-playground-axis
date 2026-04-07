@@ -48,7 +48,7 @@ export type UserSettings = {
 
 // Fallback if NEXT_PUBLIC_APP_CONFIG is not set
 const defaultConfig: AppConfig = {
-  title: "Auflo Agent Playground",
+  title: "Audatec Agent Playground",
   description: "A virtual workbench for testing AI agents.",
   video_fit: "contain",
   settings: {

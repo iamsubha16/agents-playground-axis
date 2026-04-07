@@ -39,10 +39,32 @@ const TERMINAL_CALL_STATUSES = new Set([
   "Cancelled",
 ]);
 
+/** API may return different casing; polling must still stop. */
+function isTerminalStudioStatus(status: string): boolean {
+  const t = status.trim();
+  if (TERMINAL_CALL_STATUSES.has(t)) return true;
+  const lower = t.toLowerCase();
+  return (
+    lower === "completed" ||
+    lower === "not answered" ||
+    lower === "rejected" ||
+    lower === "failed" ||
+    lower === "cancelled"
+  );
+}
+
+function isCompletedStudioStatus(status: string): boolean {
+  return status.trim().toLowerCase() === "completed";
+}
+
+function lifecycleForTerminalStudioStatus(status: string): CallLifecycle {
+  return isCompletedStudioStatus(status) ? "call_ended" : "call_failed";
+}
+
 /** Studio/API variants meaning the call is live (not terminal). */
 function studioStatusIndicatesLive(callStatus: string): boolean {
   const s = callStatus.trim();
-  if (!s || TERMINAL_CALL_STATUSES.has(s)) return false;
+  if (!s || isTerminalStudioStatus(s)) return false;
   const lower = s.toLowerCase();
   const live = new Set([
     "scheduled",
@@ -167,24 +189,32 @@ export const TestCallPanel = () => {
       const sipResult = data.sip_result;
       const roomName: string | null = data.room_name || sipResult?.room_name || null;
 
+      const sipFailed =
+        sipResult?.status === "failed" ||
+        (sipResult?.raw_api_response?.sip_status_code &&
+          parseInt(sipResult.raw_api_response.sip_status_code, 10) >= 400);
+
       setCallState((prev) => {
         if (!prev || prev.jobId !== jobId) return prev;
-        // If SIP failed (sip_status 486 etc.), mark call_failed
-        const sipFailed =
-          sipResult?.status === "failed" ||
-          (sipResult?.raw_api_response?.sip_status_code &&
-            parseInt(sipResult.raw_api_response.sip_status_code) >= 400);
-
         // Room exists + SIP OK ⇒ media/agent session is up — treat as in call.
         // Studio often omits the call row until hangup; staying on call_dialing was a UI bug.
-        return {
+        const next: CallState = {
           ...prev,
           sipResult,
           roomName,
           lifecycle: sipFailed ? "call_failed" : "call_active",
           call: data.call || null,
         };
+        if (sipFailed) {
+          queueMicrotask(() => pushToHistory(next));
+        }
+        return next;
       });
+
+      // SIP leg failed — do not start room polling (Studio may never return a row → endless GETs).
+      if (sipFailed) {
+        return;
+      }
 
       if (!roomName) {
         // No room_name means agent wasn't dispatched (SIP error)
@@ -198,10 +228,12 @@ export const TestCallPanel = () => {
       }
 
       // If Studio already has a terminal call record (fast failure), push to history
-      if (data.call && TERMINAL_CALL_STATUSES.has(data.call.call_status)) {
+      if (data.call && isTerminalStudioStatus(String(data.call.call_status))) {
+        const cs = String(data.call.call_status);
+        const terminalLifecycle = lifecycleForTerminalStudioStatus(cs);
         setCallState((prev) => {
           if (!prev || prev.jobId !== jobId) return prev;
-          const updated = { ...prev, lifecycle: "call_ended" as CallLifecycle, call: data.call };
+          const updated = { ...prev, lifecycle: terminalLifecycle, call: data.call };
           pushToHistory(updated);
           return updated;
         });
@@ -231,8 +263,8 @@ export const TestCallPanel = () => {
       setCallState((prev) => {
         if (!prev || prev.jobId !== jobId) return prev;
         let lifecycle: CallLifecycle;
-        if (TERMINAL_CALL_STATUSES.has(callStatus)) {
-          lifecycle = "call_ended";
+        if (isTerminalStudioStatus(callStatus)) {
+          lifecycle = lifecycleForTerminalStudioStatus(callStatus);
         } else if (studioStatusIndicatesLive(callStatus)) {
           lifecycle = "call_active";
         } else {
@@ -244,11 +276,12 @@ export const TestCallPanel = () => {
       });
 
       // Terminal — stop Phase 2 polling and save to history
-      if (TERMINAL_CALL_STATUSES.has(callStatus)) {
+      if (isTerminalStudioStatus(callStatus)) {
         if (studioPollingRef.current) { clearInterval(studioPollingRef.current); studioPollingRef.current = null; }
+        const terminalLifecycle = lifecycleForTerminalStudioStatus(callStatus);
         setCallState((prev) => {
           if (!prev || prev.jobId !== jobId) return prev;
-          const updated = { ...prev, call, lifecycle: "call_ended" as CallLifecycle };
+          const updated = { ...prev, call, lifecycle: terminalLifecycle };
           pushToHistory(updated);
           return updated;
         });
@@ -305,6 +338,17 @@ export const TestCallPanel = () => {
   // ── Cleanup ───────────────────────────────────────────────────────────────
   useEffect(() => () => stopAllPolling(), [stopAllPolling]);
 
+  // If anything sets a terminal lifecycle without clearing the interval, stop room polling anyway.
+  useEffect(() => {
+    if (!callState) return;
+    const terminal =
+      callState.lifecycle === "call_ended" || callState.lifecycle === "call_failed";
+    if (terminal && studioPollingRef.current) {
+      clearInterval(studioPollingRef.current);
+      studioPollingRef.current = null;
+    }
+  }, [callState?.lifecycle, callState?.jobId]);
+
   const displayedCall = selectedHistoryIndex !== null ? callHistory[selectedHistoryIndex] : callState;
 
   return (
@@ -333,7 +377,9 @@ export const TestCallPanel = () => {
                 jobId={callState.jobId}
                 phoneNumber={callState.phoneNumber}
                 callStatus={callState.call?.call_status ?? null}
+                callDurationSeconds={callState.call?.duration ?? null}
                 errorMessage={callState.errorMessage}
+                reachedDialingPhase={Boolean(callState.roomName)}
               />
             </motion.div>
           )}
@@ -366,7 +412,7 @@ export const TestCallPanel = () => {
                   hist.lifecycle === "call_ended"
                     ? hist.call?.call_status || "Completed"
                     : hist.lifecycle === "call_failed"
-                      ? "Failed"
+                      ? hist.call?.call_status || "Failed"
                       : "In Progress";
 
                 return (
