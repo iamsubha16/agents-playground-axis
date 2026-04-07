@@ -1,8 +1,8 @@
 import { NextApiRequest, NextApiResponse } from "next";
 
-const STUDIO_API_URL = process.env.STUDIO_API_URL || "https://api.auflo.in";
-const STUDIO_API_KEY = process.env.STUDIO_API_KEY || "";
-const SIP_DIALER_URL = process.env.SIP_DIALER_API_URL || "https://dialer5.auflo.in";
+const STUDIO_API_URL = process.env.STUDIO_API_URL;
+const STUDIO_API_KEY = process.env.STUDIO_API_KEY;
+const SIP_DIALER_URL = process.env.NEXT_PUBLIC_SIP_DIALER_URL;
 
 const studioHeaders = {
   "Content-Type": "application/json",
