@@ -11,7 +11,11 @@ const DEFAULT_AGENT = "audatec-rpc-agent-v1";
 type Trunk = { id: string; label: string };
 
 type TestCallFormProps = {
-  onCallTriggered: (jobId: string, phoneNumber: string) => void;
+  onCallTriggered: (
+    jobId: string,
+    phoneNumber: string,
+    customerName: string,
+  ) => void;
   isCallActive: boolean;
 };
 
@@ -63,7 +67,7 @@ export const TestCallForm = ({ onCallTriggered, isCallActive }: TestCallFormProp
 
       const data = await res.json();
       if (!res.ok) throw new Error(data.detail || data.error || "Failed to trigger call");
-      onCallTriggered(data.job_id, cleaned);
+      onCallTriggered(data.job_id, cleaned, customerName.trim());
     } catch (err: any) {
       setError(err.message);
     } finally {

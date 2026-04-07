@@ -17,6 +17,8 @@ type CallLifecycle =
 type CallState = {
   jobId: string;
   phoneNumber: string;
+  /** From "Customer Name" in the form; shown on transcript user bubbles. */
+  customerName: string;
   // Phase 1 - SIP Dialer
   sipStatus: SipJobStatus;
   sipResult: any | null;
@@ -37,6 +39,28 @@ const TERMINAL_CALL_STATUSES = new Set([
   "Cancelled",
 ]);
 
+/** Studio/API variants meaning the call is live (not terminal). */
+function studioStatusIndicatesLive(callStatus: string): boolean {
+  const s = callStatus.trim();
+  if (!s || TERMINAL_CALL_STATUSES.has(s)) return false;
+  const lower = s.toLowerCase();
+  const live = new Set([
+    "scheduled",
+    "active",
+    "in progress",
+    "in_progress",
+    "in call",
+    "in_call",
+    "live",
+    "ongoing",
+    "connected",
+    "answered",
+    "talking",
+  ]);
+  if (live.has(lower)) return true;
+  return s === "Scheduled" || s === "Active";
+}
+
 // ── Persistence ──────────────────────────────────────────────────────────────
 
 const HISTORY_KEY = "testcall_history";
@@ -45,7 +69,15 @@ const MAX_HISTORY = 50;
 const loadHistory = (): CallState[] => {
   try {
     const raw = localStorage.getItem(HISTORY_KEY);
-    return raw ? JSON.parse(raw) : [];
+    if (!raw) return [];
+    const parsed = JSON.parse(raw) as CallState[];
+    return Array.isArray(parsed)
+      ? parsed.map((h) => ({
+          ...h,
+          customerName:
+            typeof h.customerName === "string" ? h.customerName : "",
+        }))
+      : [];
   } catch {
     return [];
   }
@@ -90,7 +122,17 @@ export const TestCallPanel = () => {
 
       setCallState((prev) => {
         if (!prev || prev.jobId !== jobId) return prev;
-        return { ...prev, sipStatus: data.status, errorMessage: data.error_message ?? null };
+        let lifecycle = prev.lifecycle;
+        // SIP job is actively placing the call (ringing / in progress on trunk)
+        if (data.status === "running" || data.status === "in_progress") {
+          lifecycle = "call_dialing";
+        }
+        return {
+          ...prev,
+          sipStatus: data.status,
+          errorMessage: data.error_message ?? null,
+          lifecycle,
+        };
       });
 
       if (data.status === "completed" || data.status === "failed" || data.status === "cancelled") {
@@ -133,11 +175,13 @@ export const TestCallPanel = () => {
           (sipResult?.raw_api_response?.sip_status_code &&
             parseInt(sipResult.raw_api_response.sip_status_code) >= 400);
 
+        // Room exists + SIP OK ⇒ media/agent session is up — treat as in call.
+        // Studio often omits the call row until hangup; staying on call_dialing was a UI bug.
         return {
           ...prev,
           sipResult,
           roomName,
-          lifecycle: sipFailed ? "call_failed" : "call_dialing",
+          lifecycle: sipFailed ? "call_failed" : "call_active",
           call: data.call || null,
         };
       });
@@ -179,18 +223,23 @@ export const TestCallPanel = () => {
       const data = await res.json();
       const call = data.call;
 
-      if (!call) return; // Not yet written by agent — keep polling
+      // Studio may not return `call` until the call ends — lifecycle already call_active from SIP phase.
+      if (!call) return;
 
       const callStatus: string = call.call_status || "";
 
       setCallState((prev) => {
         if (!prev || prev.jobId !== jobId) return prev;
-        const isActive = callStatus === "Scheduled" || callStatus === "Active";
-        const lifecycle: CallLifecycle = isActive
-          ? "call_active"
-          : TERMINAL_CALL_STATUSES.has(callStatus)
-            ? "call_ended"
-            : "call_active";
+        let lifecycle: CallLifecycle;
+        if (TERMINAL_CALL_STATUSES.has(callStatus)) {
+          lifecycle = "call_ended";
+        } else if (studioStatusIndicatesLive(callStatus)) {
+          lifecycle = "call_active";
+        } else {
+          // e.g. Ringing / Initiated — show dialing unless we already know we're live
+          lifecycle =
+            prev.lifecycle === "call_active" ? "call_active" : "call_dialing";
+        }
         return { ...prev, call, lifecycle };
       });
 
@@ -228,12 +277,14 @@ export const TestCallPanel = () => {
   };
 
   // ── Trigger: called when form submits ────────────────────────────────────
-  const handleCallTriggered = useCallback((jobId: string, phoneNumber: string) => {
+  const handleCallTriggered = useCallback(
+    (jobId: string, phoneNumber: string, customerName: string) => {
     stopAllPolling();
     setSelectedHistoryIndex(null);
     const initial: CallState = {
       jobId,
       phoneNumber,
+      customerName,
       sipStatus: "pending",
       sipResult: null,
       errorMessage: null,
@@ -247,7 +298,9 @@ export const TestCallPanel = () => {
     // Phase 1: SIP dialer polling every 2s
     sipPollingRef.current = setInterval(() => pollSipStatus(jobId), 2000);
     pollSipStatus(jobId);
-  }, [pollSipStatus, stopAllPolling]);
+  },
+  [pollSipStatus, stopAllPolling],
+);
 
   // ── Cleanup ───────────────────────────────────────────────────────────────
   useEffect(() => () => stopAllPolling(), [stopAllPolling]);
@@ -352,6 +405,7 @@ export const TestCallPanel = () => {
           sipResult={displayedCall?.sipResult || null}
           isLoading={displayedCall?.isLoadingDetails || false}
           lifecycle={displayedCall?.lifecycle || null}
+          customerName={displayedCall?.customerName ?? ""}
         />
       </div>
     </div>

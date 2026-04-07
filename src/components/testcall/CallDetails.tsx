@@ -10,9 +10,16 @@ type CallDetailsProps = {
   sipResult: any | null;
   isLoading: boolean;
   lifecycle?: CallLifecycle;
+  customerName?: string;
 };
 
-export const CallDetails = ({ call, sipResult, isLoading, lifecycle }: CallDetailsProps) => {
+export const CallDetails = ({
+  call,
+  sipResult,
+  isLoading,
+  lifecycle,
+  customerName = "",
+}: CallDetailsProps) => {
   const [activeTab, setActiveTab] = useState<"transcript" | "recording" | "details">("transcript");
 
   if (isLoading) {
@@ -95,18 +102,22 @@ export const CallDetails = ({ call, sipResult, isLoading, lifecycle }: CallDetai
       </div>
 
       {/* Tab Content */}
-      <div className="flex-1 overflow-y-auto p-4">
+      <div className="flex-1 min-h-0 overflow-hidden p-4 flex flex-col">
         {activeTab === "transcript" && (
           <TranscriptView
             transcriptUrl={call?.transcript_url || null}
             rawTranscript={null}
+            className="flex-1 min-h-0"
+            customerDisplayName={customerName}
           />
         )}
         {activeTab === "recording" && (
-          <RecordingPlayer recordingUrl={call?.recording_url || null} />
+          <div className="flex-1 min-h-0 overflow-y-auto">
+            <RecordingPlayer recordingUrl={call?.recording_url || null} />
+          </div>
         )}
         {activeTab === "details" && (
-          <div className="flex flex-col gap-4">
+          <div className="flex flex-col gap-4 overflow-y-auto flex-1 min-h-0">
             {sipResult ? <SipResultPanel result={sipResult} /> : (
               <div className="flex items-center justify-center h-24 text-gray-600 text-sm">
                 Trigger a test call to see details here
