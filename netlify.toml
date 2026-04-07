@@ -2,9 +2,10 @@
   command = "npm run build"
   publish = ".next"
 
-  # NEXT_PUBLIC_* vars are intentionally exposed to the client by Next.js - omit from secrets scan
+  # Omit keys Netlify would otherwise flag in .next (client public vars + dialer URL may appear in server chunks/cache).
+  # SIP dialer URLs are read via getRuntimeEnv() to avoid inlining; omit covers webpack pack edge cases.
   [build.environment]
-    SECRETS_SCAN_OMIT_KEYS = "NEXT_PUBLIC_AGENT_NAME,NEXT_PUBLIC_LIVEKIT_URL"
+    SECRETS_SCAN_OMIT_KEYS = "NEXT_PUBLIC_AGENT_NAME,NEXT_PUBLIC_LIVEKIT_URL,SIP_DIALER_API_URL,NEXT_PUBLIC_SIP_DIALER_URL"
     # Allow pnpm install when lockfile is out of sync with package.json
     PNPM_FLAGS = "--no-frozen-lockfile"
 

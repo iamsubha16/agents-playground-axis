@@ -1,14 +1,13 @@
+import { getRuntimeEnv } from "@/lib/serverEnv";
+
 /**
- * SIP dialer base URL — read only from server-side code (API routes).
- * Prefer SIP_DIALER_API_URL. NEXT_PUBLIC_SIP_DIALER_URL is supported as a legacy
- * fallback here only (this module is not imported by the client, so that value
- * is not bundled for the browser).
+ * SIP dialer base URL — server-only (API routes).
+ * Uses getRuntimeEnv so the URL is not inlined into Netlify’s .next build output.
  */
 export function getSipDialerBaseUrl(): string {
   const raw =
-    process.env.SIP_DIALER_API_URL ||
-    process.env.NEXT_PUBLIC_SIP_DIALER_URL ||
-    "";
+    getRuntimeEnv("SIP_DIALER_API_URL") ||
+    getRuntimeEnv("NEXT_PUBLIC_SIP_DIALER_URL");
   return raw.trim().replace(/\/$/, "");
 }
 

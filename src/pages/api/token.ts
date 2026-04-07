@@ -1,11 +1,8 @@
 import { NextApiRequest, NextApiResponse } from "next";
 
-import { TokenSourceRequestPayload } from "livekit-client";
 import { AccessToken } from "livekit-server-sdk";
 import { RoomConfiguration } from "@livekit/protocol";
-
-const apiKey = process.env.LIVEKIT_API_KEY;
-const apiSecret = process.env.LIVEKIT_API_SECRET;
+import { getRuntimeEnv } from "@/lib/serverEnv";
 
 type TokenRequest = {
   room_name: string;
@@ -18,10 +15,14 @@ type TokenRequest = {
 
 // This route handler creates a token for a given room and participant
 // it's compatible with LiveKit's TokenSourceEndpoint API
-async function createToken(request: TokenRequest) {
+async function createToken(
+  request: TokenRequest,
+  apiKey: string,
+  apiSecret: string,
+) {
   const at = new AccessToken(
-    process.env.LIVEKIT_API_KEY,
-    process.env.LIVEKIT_API_SECRET,
+    apiKey,
+    apiSecret,
     {
       identity: request.participant_identity,
       // Token to expire after 10 minutes
@@ -65,6 +66,9 @@ export default async function handleToken(
     res.status(405).end("Method Not Allowed");
     return;
   }
+  const apiKey = getRuntimeEnv("LIVEKIT_API_KEY");
+  const apiSecret = getRuntimeEnv("LIVEKIT_API_SECRET");
+
   if (!apiKey || !apiSecret) {
     res.statusMessage = "Environment variables aren't set up correctly";
     res.status(500).end();
@@ -79,8 +83,8 @@ export default async function handleToken(
 
   try {
     res.status(200).json({
-      server_url: process.env.NEXT_PUBLIC_LIVEKIT_URL,
-      participant_token: await createToken(options),
+      server_url: getRuntimeEnv("NEXT_PUBLIC_LIVEKIT_URL"),
+      participant_token: await createToken(options, apiKey, apiSecret),
     });
   } catch (err) {
     console.error("Error generating token:", err);

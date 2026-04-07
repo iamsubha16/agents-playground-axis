@@ -1,17 +1,19 @@
 import { NextApiRequest, NextApiResponse } from "next";
+import { getRuntimeEnv } from "@/lib/serverEnv";
 import { getSipDialerBaseUrl, isSafeDialerJobId } from "@/lib/sipDialerServer";
-
-const STUDIO_API_URL = process.env.STUDIO_API_URL || "";
-const STUDIO_API_KEY = process.env.STUDIO_API_KEY || "";
-
-const studioHeaders: Record<string, string> = {
-  "Content-Type": "application/json",
-  "X-API-Key": STUDIO_API_KEY,
-};
 
 const MAX_ROOM_NAME_LEN = 256;
 
+function studioHeaders(): Record<string, string> {
+  return {
+    "Content-Type": "application/json",
+    "X-API-Key": getRuntimeEnv("STUDIO_API_KEY"),
+  };
+}
+
 async function getCallByRoomName(roomName: string) {
+  const STUDIO_API_URL = getRuntimeEnv("STUDIO_API_URL");
+  const STUDIO_API_KEY = getRuntimeEnv("STUDIO_API_KEY");
   if (!STUDIO_API_KEY || !STUDIO_API_URL) return null;
   if (
     roomName.length === 0 ||
@@ -21,7 +23,7 @@ async function getCallByRoomName(roomName: string) {
     return null;
   }
   const res = await fetch(`${STUDIO_API_URL}/calls/room/${encodeURIComponent(roomName)}`, {
-    headers: studioHeaders,
+    headers: studioHeaders(),
   });
   if (res.status === 404) return null;
   if (!res.ok) throw new Error(`Studio API error: ${res.status}`);
