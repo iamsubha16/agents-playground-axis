@@ -10,7 +10,6 @@ const studioHeaders = {
 };
 
 async function getCallByRoomName(roomName: string) {
-  if (!STUDIO_API_KEY) return null;
   const res = await fetch(`${STUDIO_API_URL}/calls/room/${encodeURIComponent(roomName)}`, {
     headers: studioHeaders,
   });
