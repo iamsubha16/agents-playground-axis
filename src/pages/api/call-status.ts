@@ -1,6 +1,6 @@
 import { NextApiRequest, NextApiResponse } from "next";
 
-const SIP_DIALER_URL = process.env.NEXT_PUBLIC_SIP_DIALER_URL;
+const SIP_DIALER_URL = process.env.NEXT_PUBLIC_SIP_DIALER_URL || "";
 
 export default async function handler(
   req: NextApiRequest,

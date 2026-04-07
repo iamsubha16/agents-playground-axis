@@ -1,15 +1,16 @@
 import { NextApiRequest, NextApiResponse } from "next";
 
-const STUDIO_API_URL = process.env.STUDIO_API_URL;
-const STUDIO_API_KEY = process.env.STUDIO_API_KEY;
-const SIP_DIALER_URL = process.env.NEXT_PUBLIC_SIP_DIALER_URL;
+const STUDIO_API_URL = process.env.STUDIO_API_URL || "";
+const STUDIO_API_KEY = process.env.STUDIO_API_KEY || "";
+const SIP_DIALER_URL = process.env.NEXT_PUBLIC_SIP_DIALER_URL || "";
 
-const studioHeaders = {
+const studioHeaders: Record<string, string> = {
   "Content-Type": "application/json",
   "X-API-Key": STUDIO_API_KEY,
 };
 
 async function getCallByRoomName(roomName: string) {
+  if (!STUDIO_API_KEY || !STUDIO_API_URL) return null;
   const res = await fetch(`${STUDIO_API_URL}/calls/room/${encodeURIComponent(roomName)}`, {
     headers: studioHeaders,
   });
