@@ -2,8 +2,6 @@ import { useState, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { LoadingSVG } from "@/components/button/LoadingSVG";
 
-const SIP_DIALER_URL = process.env.NEXT_PUBLIC_SIP_DIALER_URL || "https://dialer5.auflo.in";
-
 const DEFAULT_TRUNKS = [
   { id: "ST_iXFxRcZBhfCL", label: "DS Test Server" }
 ];
@@ -52,7 +50,7 @@ export const TestCallForm = ({ onCallTriggered, isCallActive }: TestCallFormProp
 
     setIsLoading(true);
     try {
-      const res = await fetch(`${SIP_DIALER_URL}/api/jobs/test-call`, {
+      const res = await fetch("/api/test-call", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

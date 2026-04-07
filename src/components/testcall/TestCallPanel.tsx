@@ -4,8 +4,6 @@ import { TestCallForm } from "./TestCallForm";
 import { CallProgress } from "./CallProgress";
 import { CallDetails } from "./CallDetails";
 
-const SIP_DIALER_URL = process.env.NEXT_PUBLIC_SIP_DIALER_URL || "https://dialer5.auflo.in";
-
 // ── Types ────────────────────────────────────────────────────────────────────
 
 type SipJobStatus = "pending" | "running" | "completed" | "failed" | "cancelled";
@@ -84,7 +82,9 @@ export const TestCallPanel = () => {
   // ── Phase 1: Poll SIP Dialer job status ─────────────────────────────────
   const pollSipStatus = useCallback(async (jobId: string) => {
     try {
-      const res = await fetch(`${SIP_DIALER_URL}/api/jobs/${jobId}/status`);
+      const res = await fetch(
+        `/api/call-status?job_id=${encodeURIComponent(jobId)}`,
+      );
       if (!res.ok) return;
       const data = await res.json();
 

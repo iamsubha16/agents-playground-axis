@@ -41,7 +41,16 @@ pnpm install
 LIVEKIT_API_KEY=<your API KEY>
 LIVEKIT_API_SECRET=<Your API Secret>
 NEXT_PUBLIC_LIVEKIT_URL=wss://<Your Cloud URL>
+
+# SIP test-call feature (server-only — do not use NEXT_PUBLIC_ for the dialer URL)
+SIP_DIALER_API_URL=https://<your-sip-dialer-host>
+
+# Optional: Studio API for call details after test calls
+STUDIO_API_URL=
+STUDIO_API_KEY=
 ```
+
+On Netlify, set `SIP_DIALER_API_URL` in **Site configuration → Environment variables** (not as a `NEXT_PUBLIC_` variable). Remove any legacy `NEXT_PUBLIC_SIP_DIALER_URL` so the dialer base URL is not shipped in the client bundle.
 
 3. Run the development server:
 

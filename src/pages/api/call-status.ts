@@ -1,6 +1,5 @@
 import { NextApiRequest, NextApiResponse } from "next";
-
-const SIP_DIALER_URL = process.env.NEXT_PUBLIC_SIP_DIALER_URL || "";
+import { getSipDialerBaseUrl, isSafeDialerJobId } from "@/lib/sipDialerServer";
 
 export default async function handler(
   req: NextApiRequest,
@@ -11,15 +10,26 @@ export default async function handler(
     return res.status(405).end("Method Not Allowed");
   }
 
+  const base = getSipDialerBaseUrl();
+  if (!base) {
+    return res.status(503).json({
+      error: "SIP dialer is not configured (set SIP_DIALER_API_URL on the server)",
+    });
+  }
+
   const { job_id } = req.query;
 
   if (!job_id || typeof job_id !== "string") {
     return res.status(400).json({ error: "job_id is required" });
   }
 
+  if (!isSafeDialerJobId(job_id)) {
+    return res.status(400).json({ error: "Invalid job_id" });
+  }
+
   try {
     const response = await fetch(
-      `${SIP_DIALER_URL}/api/jobs/${job_id}/status`,
+      `${base}/api/jobs/${encodeURIComponent(job_id)}/status`,
     );
     const data = await response.json();
 

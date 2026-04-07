@@ -1,16 +1,25 @@
 import { NextApiRequest, NextApiResponse } from "next";
+import { getSipDialerBaseUrl, isSafeDialerJobId } from "@/lib/sipDialerServer";
 
 const STUDIO_API_URL = process.env.STUDIO_API_URL || "";
 const STUDIO_API_KEY = process.env.STUDIO_API_KEY || "";
-const SIP_DIALER_URL = process.env.NEXT_PUBLIC_SIP_DIALER_URL || "";
 
 const studioHeaders: Record<string, string> = {
   "Content-Type": "application/json",
   "X-API-Key": STUDIO_API_KEY,
 };
 
+const MAX_ROOM_NAME_LEN = 256;
+
 async function getCallByRoomName(roomName: string) {
   if (!STUDIO_API_KEY || !STUDIO_API_URL) return null;
+  if (
+    roomName.length === 0 ||
+    roomName.length > MAX_ROOM_NAME_LEN ||
+    /[\r\n\0]/.test(roomName)
+  ) {
+    return null;
+  }
   const res = await fetch(`${STUDIO_API_URL}/calls/room/${encodeURIComponent(roomName)}`, {
     headers: studioHeaders,
   });
@@ -39,8 +48,21 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       return res.status(400).json({ error: "job_id or room_name is required" });
     }
 
+    if (!isSafeDialerJobId(job_id)) {
+      return res.status(400).json({ error: "Invalid job_id" });
+    }
+
+    const dialerBase = getSipDialerBaseUrl();
+    if (!dialerBase) {
+      return res.status(503).json({
+        error: "SIP dialer is not configured (set SIP_DIALER_API_URL on the server)",
+      });
+    }
+
     // Get detailed sip-dialer results
-    const dialerRes = await fetch(`${SIP_DIALER_URL}/api/jobs/${job_id}/results/detailed`);
+    const dialerRes = await fetch(
+      `${dialerBase}/api/jobs/${encodeURIComponent(job_id)}/results/detailed`,
+    );
     if (!dialerRes.ok) {
       return res.status(dialerRes.status).json({
         error: "Failed to fetch job results from SIP Dialer",
